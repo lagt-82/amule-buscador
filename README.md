@@ -60,3 +60,7 @@ buscador/
   app/amule_client.py     cliente de la API REST de amuleapi (login JWT, reintento)
   app/static/index.html   interfaz (HTML + JS sin dependencias)
 ```
+
+## Licencia
+
+[MIT](LICENSE) © 2026 lagt-82
