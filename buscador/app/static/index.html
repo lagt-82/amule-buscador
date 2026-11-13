@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buscador aMule</title>
+<style>
+  :root{--bg:#0f1216;--panel:#171b21;--line:#262c35;--txt:#e6e9ee;--mut:#8b94a3;--acc:#3ea6ff;--ok:#3ccf7a;--warn:#f0b429;--bad:#ef5b5b}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;font-weight:650}
+  .st{display:flex;gap:12px;flex-wrap:wrap;color:var(--mut);font-size:12.5px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:var(--mut)}
+  .dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+  nav{display:flex;gap:4px;margin-left:auto}
+  nav button{background:none;border:1px solid transparent;color:var(--mut);padding:6px 12px;border-radius:8px;cursor:pointer;font:inherit}
+  nav button.on{color:var(--txt);border-color:var(--line);background:var(--bg)}
+  main{max-width:1200px;margin:0 auto;padding:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+  form.search{display:grid;grid-template-columns:1fr auto;gap:8px}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  input,select,textarea{background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
+  .filters input{width:120px}
+  button.pri{background:var(--acc);color:#04111f;border:0;border-radius:8px;padding:8px 16px;font-weight:650;cursor:pointer;font:inherit;font-weight:650}
+  button.sec{background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit}
+  button:disabled{opacity:.5;cursor:default}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;cursor:pointer;color:var(--mut)}
+  .chip.on{color:var(--txt);border-color:var(--acc)}
+  .chip b{font-weight:500}
+  .chip .x{border:0;background:none;color:var(--mut);cursor:pointer;font-size:15px;padding:0 4px}
+  .bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--acc);transition:width .4s}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+  th{color:var(--mut);font-weight:500;font-size:12.5px;cursor:pointer;user-select:none;white-space:nowrap}
+  td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  th.n{text-align:right}
+  td.name{word-break:break-word}
+  .tag{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px;white-space:nowrap}
+  .tag.have{color:var(--ok);border-color:var(--ok)}
+  .row-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+  .mut{color:var(--mut)}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#222a35;border:1px solid var(--line);padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw}
+  .toast.show{opacity:1}
+  .hidden{display:none}
+  textarea{width:100%;min-height:140px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+  details summary{cursor:pointer;color:var(--mut);font-size:12px}
+  @media (max-width:700px){
+    .hide-sm{display:none}
+    form.search{grid-template-columns:1fr}
+    nav{margin-left:0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔎 Buscador aMule</h1>
+  <div class="st" id="status"><span><i class="dot"></i>Conectando…</span></div>
+  <nav>
+    <button data-view="buscar" class="on">Buscar</button>
+    <button data-view="descargas">Descargas</button>
+    <button data-view="enlaces">Añadir enlaces</button>
+  </nav>
+</header>
+
+<main>
+  <!-- BUSCAR -->
+  <section id="v-buscar">
+    <div class="card">
+      <form class="search" id="f-search">
+        <input id="q" placeholder="¿Qué buscas? (ej. debian iso)" autocomplete="off" required>
+        <button class="pri" id="b-search">Buscar</button>
+      </form>
+      <div class="filters">
+        <select id="type" title="Red">
+          <option value="global">eD2k global</option>
+          <option value="kad">Kad</option>
+          <option value="all">eD2k + Kad</option>
+          <option value="local">Servidor local</option>
+        </select>
+        <select id="ftype" title="Tipo de archivo">
+          <option value="">Cualquier tipo</option>
+          <option value="video">Vídeo</option>
+          <option value="audio">Audio</option>
+          <option value="disc_image">Imagen de disco</option>
+          <option value="archive">Comprimido</option>
+          <option value="program">Programa</option>
+          <option value="text">Documento</option>
+          <option value="picture">Imagen</option>
+        </select>
+        <input id="ext" placeholder="Extensión (iso)">
+        <input id="minmb" type="number" min="0" placeholder="Mín. MB">
+        <input id="maxmb" type="number" min="0" placeholder="Máx. MB">
+        <input id="minsrc" type="number" min="0" placeholder="Mín. fuentes">
+      </div>
+    </div>
+
+    <div class="tabs" id="search-tabs"></div>
+
+    <div class="card hidden" id="results-card">
+      <div class="row-tools">
+        <div><b id="r-title"></b> <span class="mut" id="r-info"></span></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="filter" placeholder="Filtrar resultados…" style="width:200px">
+          <button class="sec" id="b-more" title="Ampliar búsqueda Kad">Más</button>
+          <button class="sec" id="b-stop">Detener</button>
+        </div>
+      </div>
+      <div class="bar"><i id="r-bar" style="width:0"></i></div>
+      <table>
+        <thead><tr>
+          <th data-sort="name">Nombre</th>
+          <th data-sort="size" class="n">Tamaño</th>
+          <th data-sort="sources" class="n">Fuentes</th>
+          <th data-sort="complete" class="n hide-sm">Completas</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="r-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- DESCARGAS -->
+  <section id="v-descargas" class="hidden">
+    <div class="card">
+      <div class="row-tools">
+        <b>Cola de descargas</b>
+        <button class="sec" id="b-clear">Limpiar completadas</button>
+      </div>
+      <table>
+        <thead><tr><th>Nombre</th><th class="n">Progreso</th><th class="n hide-sm">Velocidad</th><th class="n hide-sm">Fuentes</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="d-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ENLACES -->
+  <section id="v-enlaces" class="hidden">
+    <div class="card">
+      <p class="mut" style="margin-top:0">Pega uno o varios enlaces <code>ed2k://</code> o <code>magnet:</code> (uno por línea).</p>
+      <textarea id="links" placeholder="ed2k://|file|nombre.iso|123456|HASH|/"></textarea>
+      <p><button class="pri" id="b-links">Añadir a la cola</button></p>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtB = b => { if (b == null) return "—"; const u=["B","KB","MB","GB","TB"]; let i=0; b=+b; while (b>=1024 && i<u.length-1){b/=1024;i++} return (i?b.toFixed(b<10?2:1):b)+" "+u[i]; };
+const fmtS = b => b ? fmtB(b)+"/s" : "—";
+const ESTADOS = {downloading:"Descargando",waiting:"En espera",hashing:"Verificando",allocating:"Reservando",paused:"Pausada",stopped:"Detenida",completing:"Finalizando",completed:"Completada",erroneous:"Error",insufficient_disk:"Sin espacio",unknown:"?"};
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2800); }
+
+async function api(path, opts={}){
+  const r = await fetch(path, {headers:{"Content-Type":"application/json"}, ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined});
+  let data = null; try { data = await r.json(); } catch {}
+  if (!r.ok) throw new Error(data?.message || data?.detail || `Error ${r.status}`);
+  return data;
+}
+
+/* ---------- vistas ---------- */
+let view = "buscar";
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  view = b.dataset.view;
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x===b));
+  ["buscar","descargas","enlaces"].forEach(v => $("#v-"+v).classList.toggle("hidden", v!==view));
+  if (view==="descargas") loadDownloads();
+});
+
+/* ---------- estado ---------- */
+async function loadStatus(){
+  try {
+    const s = await api("/api/status");
+    const d = (st, extra) => `<i class="dot ${st==="connected" ? (extra===false?"warn":"ok") : st==="connecting"?"warn":"bad"}"></i>`;
+    $("#status").innerHTML =
+      `<span>${d(s.ed2k, s.high_id)}eD2k ${s.ed2k==="connected" ? (s.high_id?"ID alta":"ID baja") : esc(s.ed2k)}${s.server?` · ${esc(s.server)}`:""}</span>`+
+      `<span>${d(s.kad, s.kad_firewalled===true?false:true)}Kad ${s.kad==="connected" ? (s.kad_firewalled?"(firewalled)":"OK") : esc(s.kad)}</span>`+
+      `<span>↓ ${fmtS(s.down)} · ↑ ${fmtS(s.up)}</span>`+
+      `<span class="hide-sm">Libre: ${fmtB(s.free)}</span>`;
+    $("#type option[value=all]").disabled = !s.search_all;
+  } catch(e){ $("#status").innerHTML = `<span><i class="dot bad"></i>${esc(e.message)}</span>`; }
+}
+
+/* ---------- búsquedas ---------- */
+let searches = [], current = null, lastData = null, sortKey = "sources", sortDir = -1, pollH = null;
+
+async function loadSearches(){
+  try { searches = await api("/api/searches"); } catch { searches = []; }
+  renderTabs();
+}
+function renderTabs(){
+  $("#search-tabs").innerHTML = searches.map(s =>
+    `<span class="chip ${s.search_id===current?"on":""}" data-id="${s.search_id}">
+       <b>${esc(s.query)}</b><span class="mut">${s.result_count ?? ""}</span>
+       <button class="x" title="Cerrar" data-close="${s.search_id}">×</button></span>`).join("");
+}
+$("#search-tabs").onclick = async e => {
+  const close = e.target.dataset.close;
+  if (close){ e.stopPropagation();
+    try { await api(`/api/search/${close}`, {method:"DELETE"}); } catch(err){ toast(err.message); }
+    if (+close===current){ current=null; $("#results-card").classList.add("hidden"); }
+    return loadSearches();
+  }
+  const chip = e.target.closest(".chip"); if (chip) openSearch(+chip.dataset.id);
+};
+
+$("#f-search").onsubmit = async e => {
+  e.preventDefault();
+  const num = id => $(id).value === "" ? null : +$(id).value;
+  $("#b-search").disabled = true;
+  try {
+    const s = await api("/api/search", {method:"POST", body:{
+      query: $("#q").value, type: $("#type").value, file_type: $("#ftype").value,
+      extension: $("#ext").value, min_size_mb: num("#minmb"), max_size_mb: num("#maxmb"), min_sources: num("#minsrc")
+    }});
+    await loadSearches();
+    openSearch(s.search_id);
+  } catch(err){ toast(err.message); }
+  finally { $("#b-search").disabled = false; }
+};
+
+function openSearch(id){
+  current = id; $("#filter").value = ""; renderTabs();
+  $("#results-card").classList.remove("hidden");
+  clearTimeout(pollH); poll();
+}
+async function poll(){
+  if (current == null) return;
+  const id = current;
+  try {
+    const d = await api(`/api/search/${id}`);
+    if (id !== current) return;
+    lastData = d; renderResults();
+    const s = searches.find(x => x.search_id===id); if (s){ s.result_count = d.results.length; s.state = d.state; renderTabs(); }
+    if (d.state === "running") pollH = setTimeout(poll, 1500);
+  } catch(err){ toast(err.message); }
+}
+function renderResults(){
+  const d = lastData; if (!d) return;
+  const f = $("#filter").value.toLowerCase().trim();
+  let rows = d.results.filter(r => !f || r.name.toLowerCase().includes(f));
+  rows.sort((a,b) => { const x=a[sortKey], y=b[sortKey]; return (typeof x==="string" ? x.localeCompare(y) : x-y) * sortDir; });
+  $("#r-title").textContent = `“${d.query}”`;
+  $("#r-info").textContent = `${d.results.length} resultados · ${d.state==="running" ? "buscando… "+d.percent+"%" : "terminada"}`;
+  $("#r-bar").style.width = (d.state==="running" ? d.percent : 100) + "%";
+  $("#b-stop").disabled = d.state !== "running";
+  $("#b-more").disabled = !d.kad_active;
+  $("#r-body").innerHTML = rows.length ? rows.map(r => `
+    <tr>
+      <td class="name">${esc(r.name)}${r.have?`<span class="tag have">ya la tienes</span>`:""}${r.status==="queued"?`<span class="tag">en cola</span>`:""}
+        ${r.alternates.length?`<details><summary>${r.alternates.length} nombre(s) alternativo(s)</summary>${r.alternates.map(a=>`<div>${esc(a.name)} <span class="mut">(${a.sources})</span> <button class="sec" data-dl="${r.hash}" data-ecid="${a.ecid}">Bajar con este nombre</button></div>`).join("")}</details>`:""}
+      </td>
+      <td class="n">${fmtB(r.size)}</td>
+      <td class="n">${r.sources}</td>
+      <td class="n hide-sm">${r.complete}</td>
+      <td class="n"><button class="sec" data-dl="${r.hash}" ${r.status==="queued"?"disabled":""}>⬇ Bajar</button></td>
+    </tr>`).join("") : `<tr><td colspan="5" class="mut">${d.state==="running"?"Esperando resultados…":"Sin resultados."}</td></tr>`;
+}
+$("#filter").oninput = renderResults;
+document.querySelectorAll("th[data-sort]").forEach(th => th.onclick = () => {
+  const k = th.dataset.sort; if (sortKey===k) sortDir*=-1; else { sortKey=k; sortDir = k==="name"?1:-1; } renderResults();
+});
+$("#r-body").onclick = async e => {
+  const b = e.target.closest("button[data-dl]"); if (!b) return;
+  b.disabled = true;
+  try {
+    await api(`/api/results/${b.dataset.dl}/download`, {method:"POST", body: b.dataset.ecid ? {ecid:+b.dataset.ecid} : {}});
+    toast("Añadido a descargas ✔"); b.textContent = "✔ En cola";
+  } catch(err){ toast(err.message); b.disabled = false; }
+};
+$("#b-stop").onclick = async () => { try { await api(`/api/search/${current}/stop`, {method:"POST"}); poll(); } catch(e){ toast(e.message); } };
+$("#b-more").onclick = async () => { try { await api(`/api/search/${current}/more`, {method:"POST"}); toast("Ampliando búsqueda Kad…"); clearTimeout(pollH); poll(); } catch(e){ toast(e.message); } };
+
+/* ---------- descargas ---------- */
+async function loadDownloads(){
+  try {
+    const list = await api("/api/downloads");
+    $("#d-body").innerHTML = list.length ? list.map(d => `
+      <tr>
+        <td class="name">${esc(d.name)}<div class="bar" style="margin-top:4px"><i style="width:${d.percent}%"></i></div></td>
+        <td class="n">${d.percent.toFixed(1)}%<div class="mut" style="font-size:12px">${fmtB(d.done)} / ${fmtB(d.size)}</div></td>
+        <td class="n hide-sm">${fmtS(d.speed)}</td>
+        <td class="n hide-sm">${d.transferring}/${d.sources}</td>
+        <td>${ESTADOS[d.status] || esc(d.status)}</td>
+        <td class="n" style="white-space:nowrap">
+          ${d.status==="completed" ? "" : ["paused","stopped"].includes(d.status)
+            ? `<button class="sec" data-act="resume" data-h="${d.hash}" title="Reanudar">▶</button>`
+            : `<button class="sec" data-act="pause" data-h="${d.hash}" title="Pausar">⏸</button>`}
+          ${d.status==="completed" ? "" : `<button class="sec" data-act="cancel" data-h="${d.hash}" title="Cancelar y borrar">✕</button>`}
+        </td>
+      </tr>`).join("") : `<tr><td colspan="6" class="mut">No hay descargas.</td></tr>`;
+  } catch(e){ $("#d-body").innerHTML = `<tr><td colspan="6">${esc(e.message)}</td></tr>`; }
+}
+$("#d-body").onclick = async e => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const h = b.dataset.h, act = b.dataset.act;
+  try {
+    if (act==="cancel"){
+      if (!confirm("¿Cancelar la descarga y borrar lo descargado?")) return;
+      await api(`/api/downloads/${h}`, {method:"DELETE"});
+    } else await api(`/api/downloads/${h}`, {method:"PATCH", body:{action:act}});
+    loadDownloads();
+  } catch(err){ toast(err.message); }
+};
+$("#b-clear").onclick = async () => { try { await api("/api/downloads/clear-completed", {method:"POST"}); loadDownloads(); } catch(e){ toast(e.message); } };
+
+/* ---------- enlaces ---------- */
+$("#b-links").onclick = async () => {
+  const links = $("#links").value.split(/\s*\n\s*/).filter(Boolean);
+  if (!links.length) return toast("Pega al menos un enlace");
+  try {
+    const r = await api("/api/downloads/links", {method:"POST", body:{links}});
+    const ok = (r?.results||[]).filter(x=>x.ok).length;
+    toast(`${ok} de ${links.length} enlaces añadidos`); if (ok===links.length) $("#links").value = "";
+  } catch(e){ toast(e.message); }
+};
+
+/* ---------- arranque ---------- */
+loadStatus(); loadSearches();
+setInterval(loadStatus, 5000);
+setInterval(() => { if (view==="descargas") loadDownloads(); }, 3000);
+</script>
+</body>
+</html>

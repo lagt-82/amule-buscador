@@ -1,0 +1,37 @@
+services:
+  amule:
+    image: ngosang/amule:latest
+    container_name: amule
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Europe/Madrid}
+      - WEBUI_PWD=${AMULE_WEBUI_PWD:?Falta AMULE_WEBUI_PWD en .env}
+      - GUI_PWD=${AMULE_EC_PWD:?Falta AMULE_EC_PWD en .env}
+      - MOD_AUTO_RESTART_ENABLED=true
+      - MOD_AUTO_RESTART_CRON=0 6 * * *
+    ports:
+      # Web UI oficial de aMule, solo accesible desde esta máquina
+      - "127.0.0.1:4711:4711"
+      # Puertos P2P: ábrelos en el router hacia esta máquina para tener ID alta
+      - "4662:4662"
+      - "4665:4665/udp"
+      - "4672:4672/udp"
+    volumes:
+      - ${AMULE_CONFIG_DIR:-./data/config}:/home/amule/.aMule
+      - ${AMULE_DOWNLOADS_DIR:-./data/downloads}:/downloads
+    restart: unless-stopped
+
+  buscador:
+    build: ./buscador
+    container_name: amule-buscador
+    depends_on:
+      - amule
+    environment:
+      - AMULE_API_URL=http://amule:4711
+      - AMULE_WEBUI_PWD=${AMULE_WEBUI_PWD}
+      - APP_USER=${APP_USER:-luis}
+      - APP_PASSWORD=${APP_PASSWORD:-}
+    ports:
+      - "${BUSCADOR_PORT:-8080}:8080"
+    restart: unless-stopped
