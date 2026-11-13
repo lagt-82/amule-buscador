@@ -7,6 +7,16 @@ Usa `amuled` (aMule 3.x, imagen `ngosang/amule`) y su API REST oficial (`amuleap
 Navegador ──► buscador (FastAPI, :8080) ──► amuleapi (:4711, solo red interna) ──► amuled ──► eD2k / Kad
 ```
 
+## Capturas
+
+![Búsqueda con filtros y resultados](docs/capturas/buscar.png)
+
+| Cola de descargas | En el móvil |
+|---|---|
+| ![Cola de descargas](docs/capturas/descargas.png) | <img src="docs/capturas/movil.png" alt="Vista en el móvil" width="260"> |
+
+<sub>Capturas con datos de ejemplo: ISOs de Debian, LibreOffice y películas libres (CC-BY) de la Blender Foundation.</sub>
+
 ## Puesta en marcha
 
 ```bash
